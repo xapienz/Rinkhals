@@ -139,6 +139,16 @@ def patch_K3SysUi(binaryPath, modelCode, version):
     # bl      QStackedWidget::setCurrentIndex
     # nop                                      < patchReturnAddress
 
+    # KS1, version 2.5.9.9:
+    # <MainWindow::AcSettingDeviceUiInit()::'lambda0'(QModelIndex const&)>:
+    # mov     r1, #3
+    # mov     r0, r3                           < patchJumpAddress
+    # bl      QStackedWidget::setCurrentIndex
+    # b       <this>+0x324
+    # nop
+    # b       <this>+0x324
+    # nop
+    # <this>+0x324                             < patchReturnAddress
     elif modelCode == 'KS1' and version == '2.5.3.1':
         buttonCallback = k3sysui.symbols['_ZZN10MainWindow26AcSettingGeneralPageUiInitEvENKUlRK11QModelIndexE0_clES2_']
         patchJumpAddress = 0x11f48c
@@ -163,6 +173,10 @@ def patch_K3SysUi(binaryPath, modelCode, version):
         buttonCallback = k3sysui.symbols['_ZZN10MainWindow26AcSettingGeneralPageUiInitEvENKUlRK11QModelIndexE0_clES2_']
         patchJumpAddress = 0x12b04c
         patchReturnAddress = 0x12b054
+    elif modelCode == 'KS1' and version == '2.5.9.9':
+        buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
+        patchJumpAddress = 0x14a51c
+        patchReturnAddress = 0x14a534
 
     else:
         raise Exception('Unsupported model and version')
@@ -247,8 +261,9 @@ def patch_K3SysUi(binaryPath, modelCode, version):
     
     if modelCode == 'KS1':
         # if (row() != 3) return
+        rowRegister = "r1" if version == "2.5.9.9" else "r3"
         k3sysui.asm(address + 0,  'mov r0, r4')
-        k3sysui.asm(address + 4,  'cmp r3, #0x3')
+        k3sysui.asm(address + 4,  f'cmp {rowRegister}, #0x3')
         k3sysui.asm(address + 8, f'bne 0x{(patchReturnAddress - 4):x}')
         address = address + 12
 
